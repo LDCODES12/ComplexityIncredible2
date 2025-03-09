@@ -1,18 +1,18 @@
 # Enhanced Social Evolution Simulator
 
-An advanced multi-agent simulation of evolving social dynamics, optimized for MacBook Air M2 with comprehensive performance optimizations.
+An advanced multi-agent simulation of evolving social dynamics, optimized for performance with comprehensive optimizations including GPU acceleration on Apple Silicon Macs.
 
 ## Overview
 
 This enhanced simulator implements complex social behaviors in autonomous agents with optimized performance using:
 
-- Cython-compiled critical calculations
-- JAX-accelerated neural networks
-- Metal GPU acceleration for spatial operations
-- Optimized quadtree spatial partitioning
-- DEAP and PyGAD evolutionary algorithms
-- Vectorized batch operations
-- Multi-threaded parallel processing
+- **Cython-compiled** critical calculations
+- **JAX-accelerated** neural networks
+- **Metal GPU acceleration** for spatial operations (Apple Silicon)
+- **Optimized quadtree** spatial partitioning
+- **DEAP and PyGAD** evolutionary algorithms
+- **Vectorized batch operations**
+- **Multi-threaded parallel processing**
 
 Agents develop complex emergent behaviors including:
 - Community formation and alliances
@@ -27,7 +27,7 @@ Agents develop complex emergent behaviors including:
 
 - Python 3.8+ (3.9+ recommended)
 - C/C++ compiler (for Cython components)
-- macOS with M1/M2/M3 chip for Metal acceleration
+- macOS with M1/M2/M3 chip for Metal acceleration (optional)
 
 ### Setup
 
@@ -40,7 +40,7 @@ cd social-evolution-simulator
 2. Create and activate a virtual environment
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scriptsctivate
 ```
 
 3. Install dependencies
@@ -48,9 +48,64 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Compile Cython extensions
+4. Compile Cython extensions using the build script
 ```bash
-python setup.py build_ext --inplace
+python build_extensions.py
+```
+
+## Running the Simulator
+
+### Command-line Interface (CLI)
+
+```bash
+# Basic run with default settings
+python main.py
+
+# Specify population and world size
+python main.py --population 200 --world-size 1000
+```
+
+### GUI Mode with Animation
+
+```bash
+# Run with graphical animation
+python main.py --mode gui
+
+# Save the animation to a video file
+python main.py --mode gui --save-video simulation.mp4
+```
+
+### Interactive Streamlit Dashboard
+
+```bash
+# Run with interactive Streamlit dashboard
+python main.py --mode streamlit
+```
+
+## Performance Tuning
+
+### Apple Silicon Optimization
+
+For best performance on M1/M2 MacBooks:
+
+```bash
+python main.py --use-metal --threads 8 --batch-size 128
+```
+
+### CPU Optimization
+
+For systems without Metal support:
+
+```bash
+python main.py --no-metal --threads 4 --batch-size 64
+```
+
+### Debugging
+
+Disable optimizations for easier debugging:
+
+```bash
+python main.py --no-metal --no-cython
 ```
 
 ## Project Structure
@@ -61,10 +116,12 @@ The simulator is organized into modular components:
 social_evolution_simulator/
 ├── main.py                   # Entry point
 ├── config.py                 # Configuration settings
+├── build_extensions.py       # Cython build script
 ├── simulation/
 │   ├── simulation.py         # Main simulation logic
 │   └── spatial/
 │       ├── quadtree.pyx      # Optimized spatial partitioning
+│       ├── grid.py           # Grid-based spatial partitioning
 │       └── metal_compute.py  # Metal GPU acceleration
 ├── agents/
 │   ├── agent.py              # Agent behavior and decision-making
@@ -72,142 +129,44 @@ social_evolution_simulator/
 │   └── evolution.py          # DEAP/PyGAD integration
 ├── social/
 │   ├── network.py            # Social relationships
+│   ├── relationship.py       # Relationship tracking
+│   ├── community.py          # Community formation
 │   └── interactions.pyx      # Cython-optimized calculations
 ├── environment/
-│   └── world.py              # Environment and resources
+│   ├── world.py              # Integrated world environment
+│   ├── conditions.py         # Environment and weather
+│   └── resources.py          # Resource management
 ├── knowledge/
-│   └── knowledge_system.py   # Knowledge discovery
+│   └── knowledge_system.py   # Knowledge discovery and sharing
 └── visualization/
-    ├── visualizer.py         # Visualization tools
-    └── streamlit_app.py      # Interactive dashboard
+    ├── visualizer.py         # Basic visualization
+    ├── plotly_vis.py         # Interactive Plotly visualizations
+    └── streamlit_app.py      # Interactive Streamlit dashboard
 ```
-
-## Key Optimizations
-
-### 1. Cython-Compiled Critical Components
-
-Social calculations and spatial operations are implemented in Cython for near-C performance:
-
-- `interactions.pyx`: Optimizes relationship calculations, community detection
-- `quadtree.pyx`: Provides efficient spatial queries with logarithmic complexity
-
-### 2. JAX Neural Networks
-
-Agent decision-making uses JAX for accelerated neural network processing:
-
-- JIT-compiled forward/backward passes
-- Vectorized batch operations
-- Efficient parameter updates
-- GPU acceleration where available
-
-### 3. Metal GPU Acceleration
-
-On Apple Silicon Macs, the simulation offloads compute-intensive operations to the GPU:
-
-- Distance calculations between agents
-- Resource influence mapping
-- Spatial partitioning updates
-
-### 4. Advanced Spatial Partitioning
-
-Quadtree implementation provides O(log n) spatial queries instead of O(n²):
-
-- Efficient nearest-neighbor searches
-- Radius-based queries
-- Dynamic updates
-
-### 5. Evolutionary Computation
-
-Two complementary systems for evolving agent behaviors:
-
-- **DEAP**: Flexible evolutionary algorithms with comprehensive toolbox
-- **PyGAD**: GPU-accelerated genetic algorithms for larger populations
-
-### 6. Memory Efficiency
-
-Optimized data structures reduce memory footprint:
-
-- Sparse representations for social relationships
-- Efficient agent batch processing
-- Pooled object allocation for frequently created entities
-
-### 7. Parallelization
-
-Multi-threaded processing leverages all available CPU cores:
-
-- Agent updates run in parallel
-- Batch processing of similar agents
-- Concurrent environmental calculations
-
-## Usage
-
-### Basic Usage
-
-```bash
-python main.py --population 200 --steps 1000 --world-size 1000
-```
-
-### Visualization Modes
-
-```bash
-# Command-line mode with statistics
-python main.py --mode cli --save-stats stats.png
-
-# GUI mode with animation
-python main.py --mode gui --save-video simulation.mp4
-
-# Interactive Streamlit dashboard
-python main.py --mode streamlit
-```
-
-### Performance Tuning
-
-```bash
-# Maximize performance on M2 MacBook
-python main.py --use-metal --use-cython --threads 8 --batch-size 128
-
-# Run without GPU acceleration
-python main.py --no-metal
-
-# Disable Cython for debugging
-python main.py --no-cython
-```
-
-## Extending the Simulation
-
-### Adding New Agent Behaviors
-
-1. Add the behavior method to the `Agent` class in `agents/agent.py`
-2. Add a new action type in the action mapping
-3. Update the neural network output dimension in `config.py`
-
-### Implementing New Environmental Features
-
-1. Add the feature to the `Environment` class in `environment/world.py`
-2. Update the agent perception method to detect the new feature
-3. Implement agent behaviors that interact with the feature
-
-### Creating New Visualizations
-
-1. Add visualization method to the `Visualizer` class
-2. For Streamlit interface, add components to `streamlit_app.py`
-
-## Performance Benchmarks
-
-Tested on MacBook Air M2 (8-core CPU, 8-core GPU, 16GB RAM):
-
-| Configuration | Population | Steps/Second |
-|---------------|------------|-------------|
-| Default       | 200        | 12.3        |
-| With Metal    | 200        | 18.7        |
-| With Cython   | 200        | 21.4        |
-| Full Optimized| 200        | 35.2        |
-| Full Optimized| 500        | 14.8        |
-| Full Optimized| 1000       | 7.3         |
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Cython compilation errors**: Make sure you have a C/C++ compiler installed. On macOS, install Xcode command line tools. On Windows, install Visual C++ Build Tools.
+
+2. **Metal acceleration errors**: Metal acceleration only works on macOS with Apple Silicon (M1/M2/M3). Use `--no-metal` on other platforms.
+
+3. **OpenMP support**: On macOS, install libomp via Homebrew for OpenMP support: `brew install libomp`
+
+4. **Memory errors with large simulations**: Reduce the world size, population, or batch size to fit within available memory.
+
+### Getting Help
+
+If you encounter issues:
+
+1. Check the logs for specific error messages
+2. Verify that all dependencies are installed
+3. Try running with `--no-metal --no-cython` to use pure Python implementations
 
 ## License
 

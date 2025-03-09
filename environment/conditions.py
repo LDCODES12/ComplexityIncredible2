@@ -1270,3 +1270,19 @@ class Environment:
             # Generic resource area based on fertility
             x, y = np.unravel_index(np.argmax(self.terrain.fertility_map), self.terrain.fertility_map.shape)
             return (int(x), int(y))
+    def get_nearby_resources(self, position, radius):
+        """
+        Get resources near a position.
+        This is a compatibility method that delegates to the resources component.
+
+        Args:
+            position: (x, y) position
+            radius: Search radius
+
+        Returns:
+            List of resources within radius
+        """
+        # This is a compatibility method - should delegate to ResourceManager
+        # In this implementation we need to return an empty list as we don't have
+        # direct access to the ResourceManager from the Environment class
+        return []

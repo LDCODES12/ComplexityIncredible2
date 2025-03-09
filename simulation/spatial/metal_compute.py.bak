@@ -54,41 +54,27 @@ class MetalCompute:
         self._compile_kernels()
 
     def _setup_metal(self):
-        """Set up Metal device, command queue, and library with improved error handling."""
+        """Set up Metal device, command queue, and library."""
         if not self.has_metal:
             return
 
-        try:
-            # Get default Metal device
-            self.device = Metal.MTLCreateSystemDefaultDevice()
-            if self.device is None:
-                warnings.warn("No Metal device found. Falling back to CPU.")
-                self.has_metal = False
-                return
-
-            # Create command queue
-            self.command_queue = self.device.newCommandQueue()
-            if self.command_queue is None:
-                warnings.warn("Failed to create Metal command queue. Falling back to CPU.")
-                self.has_metal = False
-                return
-
-            # Update config
-            METAL_CONFIG["device"] = self.device
-            METAL_CONFIG["command_queue"] = self.command_queue
-
-            # Print available memory info if possible
-            try:
-                print(f"Metal device: {self.device.name()}")
-                if hasattr(self.device, "recommendedMaxWorkingSetSize"):
-                    max_mem = self.device.recommendedMaxWorkingSetSize() / (1024 * 1024)
-                    print(f"Available Metal memory: {max_mem:.2f} MB")
-            except Exception as e:
-                print(f"Could not retrieve Metal device info: {e}")
-
-        except Exception as e:
-            warnings.warn(f"Error initializing Metal: {e}. Falling back to CPU.")
+        # Get default Metal device
+        self.device = Metal.MTLCreateSystemDefaultDevice()
+        if self.device is None:
+            warnings.warn("No Metal device found. Falling back to CPU.")
             self.has_metal = False
+            return
+
+        # Create command queue
+        self.command_queue = self.device.newCommandQueue()
+        if self.command_queue is None:
+            warnings.warn("Failed to create Metal command queue. Falling back to CPU.")
+            self.has_metal = False
+            return
+
+        # Update config
+        METAL_CONFIG["device"] = self.device
+        METAL_CONFIG["command_queue"] = self.command_queue
 
     def _compile_kernels(self):
         """Compile Metal kernel functions."""

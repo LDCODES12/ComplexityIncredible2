@@ -92,8 +92,9 @@ class Simulation:
         """Initialize all simulation components."""
         print("Initializing simulation components...")
 
-        # Initialize environment with terrain and resources
-        self.environment = Environment(self.config)
+        # Initialize world environment with terrain and resources
+        self.world = World(self.config)
+        self.environment = self.world  # For backward compatibility
 
         # Initialize knowledge pool
         self.knowledge_pool = KnowledgePool(num_knowledge=200)
@@ -178,8 +179,7 @@ class Simulation:
         self.step += 1
 
         # Update environment
-        env_start = time.time()
-        self.environment.update(self.step)
+        self.world.update(self.step)
         env_time = time.time() - env_start
 
         # Update spatial partitioning if using Metal acceleration
