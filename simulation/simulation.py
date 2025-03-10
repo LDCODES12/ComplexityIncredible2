@@ -31,7 +31,7 @@ from simulation.spatial import metal_compute
 # Import simulation components
 from agents.agent import Agent
 from social.network import SocialNetwork
-from environment.world import Environment
+from environment.world import World
 from knowledge.knowledge_system import KnowledgePool
 
 

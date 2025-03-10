@@ -26,14 +26,19 @@ try:
     if is_apple_silicon:
         import Metal
         import Foundation
-        import CoreGraphics
-
-        HAS_METAL = True
+        # Print debugging info
+        device = Metal.MTLCreateSystemDefaultDevice()
+        if device:
+            print(f"Metal initialized successfully on: {device.name()}")
+            HAS_METAL = True
+        else:
+            print("Metal device creation failed")
+            HAS_METAL = False
     else:
         HAS_METAL = False
-except ImportError:
+except ImportError as e:
     HAS_METAL = False
-    warnings.warn("Metal libraries not found. GPU acceleration disabled.")
+    warnings.warn(f"Metal libraries not found: {e}. GPU acceleration disabled.")
 
 
 class MetalCompute:
@@ -91,7 +96,7 @@ class MetalCompute:
             self.has_metal = False
 
     def _compile_kernels(self):
-        """Compile Metal kernel functions."""
+        """Compile Metal kernel functions with proper error handling."""
         if not self.has_metal:
             return
 
@@ -163,10 +168,10 @@ class MetalCompute:
             }
         }
 
-        // Kernel for spatial partitioning grid updates
+        // Kernel for spatial partitioning grid updates - FIXED for atomic operations
         kernel void update_partition_grid(
             device const float2 *positions [[ buffer(0) ]],
-            device uint *grid_counts [[ buffer(1) ]],
+            device atomic_uint *grid_counts [[ buffer(1) ]],  // FIXED: Changed to atomic_uint
             device uint *grid_indices [[ buffer(2) ]],
             constant uint2 &grid_size [[ buffer(3) ]],
             constant float2 &cell_size [[ buffer(4) ]],
@@ -185,12 +190,8 @@ class MetalCompute:
                 // Calculate linear index
                 uint cell_index = cell_y * grid_size.x + cell_x;
 
-                // Atomically increment counter and get index
-                uint index = atomic_fetch_add_explicit(
-                    &grid_counts[cell_index], 
-                    1u, 
-                    memory_order_relaxed
-                );
+                // Atomically increment counter and get index - now using proper atomic type
+                uint index = atomic_fetch_add_explicit(&grid_counts[cell_index], 1u, memory_order_relaxed);
 
                 // Store entity ID in grid
                 uint storage_index = cell_index * num_entities + index;
@@ -201,44 +202,78 @@ class MetalCompute:
         }
         """
 
-        # Create Metal library
-        options = Metal.MTLCompileOptions.alloc().init()
-        source = Foundation.NSString.alloc().initWithUTF8String_(metal_code)
+        try:
+            # Create Metal library
+            options = Metal.MTLCompileOptions.alloc().init()
+            source = Foundation.NSString.alloc().initWithUTF8String_(metal_code.encode('utf-8'))
 
-        # Handle compilation errors
-        error_ptr = Foundation.NSError.alloc().init()
-        library = self.device.newLibraryWithSource_options_error_(source, options, error_ptr)
+            # PyObjC methods with error parameters return tuples (result, error)
+            result = self.device.newLibraryWithSource_options_error_(source, options, None)
+            library = result[0]  # First element is the library
+            error = result[1]  # Second element is the error (if any)
 
-        if library is None:
-            error = error_ptr.localizedDescription()
-            error_msg = Foundation.NSString.string().UTF8String()
-            warnings.warn(f"Failed to compile Metal library: {error_msg}")
+            if library is None:
+                error_msg = error.localizedDescription() if error else "Unknown error"
+                warnings.warn(f"Failed to compile Metal library: {error_msg}")
+                self.has_metal = False
+                return
+
+            print("Metal shaders compiled successfully")
+
+            # Create function objects
+            self.calculate_distances_function = library.newFunctionWithName_("calculate_distances")
+            self.resource_influence_function = library.newFunctionWithName_("calculate_resource_influence")
+            self.update_partition_grid_function = library.newFunctionWithName_("update_partition_grid")
+
+            if (self.calculate_distances_function is None or
+                    self.resource_influence_function is None or
+                    self.update_partition_grid_function is None):
+                warnings.warn("Failed to get Metal functions from library")
+                self.has_metal = False
+                return
+
+            # Create compute pipeline states - properly unpack tuples
+            result = self.device.newComputePipelineStateWithFunction_error_(
+                self.calculate_distances_function, None)
+            self.distance_pipeline = result[0]
+            error = result[1]
+
+            if self.distance_pipeline is None:
+                error_msg = error.localizedDescription() if error else "Unknown error"
+                warnings.warn(f"Failed to create distance calculation pipeline: {error_msg}")
+                self.has_metal = False
+                return
+
+            result = self.device.newComputePipelineStateWithFunction_error_(
+                self.resource_influence_function, None)
+            self.resource_pipeline = result[0]
+            error = result[1]
+
+            if self.resource_pipeline is None:
+                error_msg = error.localizedDescription() if error else "Unknown error"
+                warnings.warn(f"Failed to create resource influence pipeline: {error_msg}")
+                self.has_metal = False
+                return
+
+            result = self.device.newComputePipelineStateWithFunction_error_(
+                self.update_partition_grid_function, None)
+            self.partition_pipeline = result[0]
+            error = result[1]
+
+            if self.partition_pipeline is None:
+                error_msg = error.localizedDescription() if error else "Unknown error"
+                warnings.warn(f"Failed to create partition pipeline: {error_msg}")
+                self.has_metal = False
+                return
+
+            # Update config
+            METAL_CONFIG["library"] = library
+
+            print("Metal GPU acceleration successfully initialized")
+
+        except Exception as e:
+            warnings.warn(f"Error during Metal setup: {str(e)}")
             self.has_metal = False
-            return
-
-        # Create function objects
-        self.calculate_distances_function = library.newFunctionWithName_("calculate_distances")
-        self.resource_influence_function = library.newFunctionWithName_("calculate_resource_influence")
-        self.update_partition_grid_function = library.newFunctionWithName_("update_partition_grid")
-
-        # Create compute pipeline states
-        self.distance_pipeline = self.device.newComputePipelineStateWithFunction_error_(
-            self.calculate_distances_function,
-            error_ptr
-        )
-
-        self.resource_pipeline = self.device.newComputePipelineStateWithFunction_error_(
-            self.resource_influence_function,
-            error_ptr
-        )
-
-        self.partition_pipeline = self.device.newComputePipelineStateWithFunction_error_(
-            self.update_partition_grid_function,
-            error_ptr
-        )
-
-        # Update config
-        METAL_CONFIG["library"] = library
 
     def calculate_distances(self, positions: np.ndarray) -> np.ndarray:
         """
