@@ -1,4 +1,35 @@
+#!/usr/bin/env python3
 """
+Complete fix for the simulation.py file.
+This will create a properly indented version of the file.
+"""
+
+import os
+import shutil
+
+
+def fix_simulation_file():
+    """Fix the simulation.py file with proper indentation."""
+
+    filepath = "simulation/simulation.py"
+    backup_path = filepath + ".broken"
+
+    # Create a backup of the broken file
+    if not os.path.exists(backup_path):
+        shutil.copy2(filepath, backup_path)
+        print(f"Created backup of broken file: {backup_path}")
+
+    # Write the fixed content
+    with open(filepath, 'w') as f:
+        f.write(FIXED_CONTENT)
+
+    print("Fixed simulation.py with proper indentation")
+    print("Try running the simulation with reduced settings:")
+    print("python main.py --population 50 --world-size 500 --steps 100")
+
+
+# The full, fixed content of simulation.py
+FIXED_CONTENT = '''"""
 Main simulation class that integrates all optimized components.
 Manages the overall simulation flow and coordinates between subsystems.
 """
@@ -534,3 +565,7 @@ class Simulation:
         self.shutdown()
 
         return self.stats
+'''
+
+if __name__ == "__main__":
+    fix_simulation_file()

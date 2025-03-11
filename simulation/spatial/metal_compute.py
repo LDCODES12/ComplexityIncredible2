@@ -333,9 +333,24 @@ class MetalCompute:
         compute_encoder.dispatchThreadgroups_threadsPerThreadgroup_(grid_size, threadgroup_size)
         compute_encoder.endEncoding()
 
-        # Execute and wait
-        command_buffer.commit()
-        command_buffer.waitUntilCompleted()
+        # Execute and wait with error handling
+        try:
+            # Safety check for buffers
+            if positions_buffer is None or distances_buffer is None:
+                warnings.warn("Invalid Metal buffers, falling back to CPU implementation")
+                return self._calculate_distances_cpu(positions)
+
+            # Execute and wait with error catching
+            command_buffer.commit()
+            command_buffer.waitUntilCompleted()
+
+            # Check for errors
+            if hasattr(command_buffer, 'error') and command_buffer.error():
+                warnings.warn(f"Metal execution error: {command_buffer.error().localizedDescription()}")
+                return self._calculate_distances_cpu(positions)
+        except Exception as e:
+            warnings.warn(f"Exception during Metal execution: {e}")
+            return self._calculate_distances_cpu(positions)
 
         # Copy results back to numpy
         result_ptr = distances_buffer.contents()
@@ -458,9 +473,24 @@ class MetalCompute:
         )
         compute_encoder.endEncoding()
 
-        # Execute and wait
-        command_buffer.commit()
-        command_buffer.waitUntilCompleted()
+        # Execute and wait with error handling
+        try:
+            # Safety check for buffers
+            if positions_buffer is None or distances_buffer is None:
+                warnings.warn("Invalid Metal buffers, falling back to CPU implementation")
+                return self._calculate_distances_cpu(positions)
+
+            # Execute and wait with error catching
+            command_buffer.commit()
+            command_buffer.waitUntilCompleted()
+
+            # Check for errors
+            if hasattr(command_buffer, 'error') and command_buffer.error():
+                warnings.warn(f"Metal execution error: {command_buffer.error().localizedDescription()}")
+                return self._calculate_distances_cpu(positions)
+        except Exception as e:
+            warnings.warn(f"Exception during Metal execution: {e}")
+            return self._calculate_distances_cpu(positions)
 
         # Copy results back to numpy
         result_ptr = influence_buffer.contents()
@@ -601,9 +631,24 @@ class MetalCompute:
         )
         compute_encoder.endEncoding()
 
-        # Execute and wait
-        command_buffer.commit()
-        command_buffer.waitUntilCompleted()
+        # Execute and wait with error handling
+        try:
+            # Safety check for buffers
+            if positions_buffer is None or distances_buffer is None:
+                warnings.warn("Invalid Metal buffers, falling back to CPU implementation")
+                return self._calculate_distances_cpu(positions)
+
+            # Execute and wait with error catching
+            command_buffer.commit()
+            command_buffer.waitUntilCompleted()
+
+            # Check for errors
+            if hasattr(command_buffer, 'error') and command_buffer.error():
+                warnings.warn(f"Metal execution error: {command_buffer.error().localizedDescription()}")
+                return self._calculate_distances_cpu(positions)
+        except Exception as e:
+            warnings.warn(f"Exception during Metal execution: {e}")
+            return self._calculate_distances_cpu(positions)
 
         # Copy results back to numpy
         counts_ptr = grid_counts_buffer.contents()

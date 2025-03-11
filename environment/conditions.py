@@ -737,8 +737,8 @@ class TerrainGenerator:
                     self.fertility_map[x, y] += 0.2 * noise_val
         else:
             # Simple random noise
-            noise = self.random_gen.rand(*self.world_size) * 0.2
-            self.fertility_map += noise
+            noise_array = self.random_gen.rand(*self.world_size) * 0.2
+            self.fertility_map += noise_array
 
         # Normalize to 0-1
         self.fertility_map = np.clip(self.fertility_map, 0, 1)
