@@ -114,21 +114,6 @@ class Simulation:
 
         print(f"Initialization complete. Created {len(self.agents)} agents.")
 
-    def _safe_position_for_quadtree(self, position):
-        """Safely convert position to numpy array with correct memory layout."""
-        # Convert to numpy array if not already
-        if not isinstance(position, np.ndarray):
-            position = np.array(position, dtype=np.float64)
-        else:
-            # Ensure it's the correct type and make a copy to avoid memory issues
-            position = np.array(position, dtype=np.float64)
-
-        # Ensure memory is contiguous (C-order)
-        if not position.flags.c_contiguous:
-            position = np.ascontiguousarray(position)
-
-        return position
-
     def _setup_spatial_partitioning(self):
         """Set up spatial partitioning system."""
         # First try to use optimized quadtree if available
@@ -162,7 +147,7 @@ class Simulation:
 
             # Add to spatial partitioning
             if self.using_quadtree:
-                self.spatial_tree.insert(i, self._safe_position_for_quadtree(agent.position))
+                self.spatial_tree.insert(i, agent.position)
             else:
                 self.spatial_grid.insert(i, agent.position)
 
@@ -194,7 +179,6 @@ class Simulation:
         self.step += 1
 
         # Update environment
-        env_start = time.time()  # Fixed: Added missing variable
         self.world.update(self.step)
         env_time = time.time() - env_start
 
@@ -205,8 +189,7 @@ class Simulation:
 
             if self.using_quadtree:
                 # Rebuild quadtree with Metal-accelerated position calculations
-                positions_safe = np.array(positions, dtype=np.float64)
-                quadtree.build_quadtree(self.spatial_tree, positions_safe)
+                quadtree.build_quadtree(self.spatial_tree, positions)
             else:
                 # Update grid with Metal acceleration
                 grid_size = (
@@ -230,13 +213,8 @@ class Simulation:
         alive_agents = {}
 
         if self.use_multiprocessing:
-            # Update agents in parallel with error handling
-            try:
-                self._update_agents_parallel()
-            except Exception as e:
-                print(f"Error in parallel processing: {e}, falling back to sequential")
-                # Fall back to sequential processing on error
-                self._update_agents_sequential()
+            # Update agents in parallel
+            self._update_agents_parallel()
         else:
             # Update agents sequentially in batches
             self._update_agents_sequential()
@@ -396,7 +374,7 @@ class Simulation:
 
                 # Add to spatial partitioning
                 if self.using_quadtree:
-                    self.spatial_tree.insert(new_id, self._safe_position_for_quadtree(agent.position))
+                    self.spatial_tree.insert(new_id, agent.position)
                 else:
                     self.spatial_grid.insert(new_id, agent.position)
 
@@ -480,17 +458,6 @@ class Simulation:
             }
         }
 
-    def shutdown(self):
-        """Explicitly shut down resources to prevent leaks."""
-        try:
-            if hasattr(self, 'use_multiprocessing') and self.use_multiprocessing:
-                if hasattr(self, 'process_pool') and self.process_pool is not None:
-                    print("Shutting down process pool...")
-                    self.process_pool.shutdown(wait=True)
-                    self.process_pool = None
-        except Exception as e:
-            print(f"Error during shutdown: {e}")
-
     def run(self, num_steps=None, callback=None):
         """
         Run simulation for specified number of steps.
@@ -526,11 +493,11 @@ class Simulation:
             print("Simulation stopped by user.")
 
         # Clean up resources
+        if self.use_multiprocessing:
+            self.process_pool.shutdown()
+
         elapsed = time.time() - self.start_time
         print(f"Simulation completed after {self.step} steps in {elapsed:.1f}s "
               f"({self.step / elapsed:.1f} steps/sec)")
-
-        # Ensure proper cleanup
-        self.shutdown()
 
         return self.stats
